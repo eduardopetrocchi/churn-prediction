@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  churn-api:
+    build: .
+    container_name: churn-prediction-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./predictions:/app/predictions
+      - ./metrics:/app/metrics
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    restart: unless-stopped
+    networks:
+      - churn-network
+    env_file:
+      - .env
+  
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mlflow-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+    networks:
+      - churn-network
+    
+networks:
+  churn-network:
+    driver: bridge
+

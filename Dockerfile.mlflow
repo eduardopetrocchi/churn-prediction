@@ -1,0 +1,13 @@
+FROM python:3.10-slim
+
+# Instalar o MLFlow e as dependências
+RUN pip install mlflow==2.10.0
+
+# Criar a pasta onde os experimentos serão salvos
+WORKDIR /mlflow/
+
+# Expor a porta padrão
+EXPOSE 5000
+
+# Comando para iniciar o servidor
+ENTRYPOINT [ "mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "/mlflow/mlruns", "--default-artifact-root", "/mlflow/mlruns" ]
