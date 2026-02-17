@@ -1,0 +1,20 @@
+# Python
+__pycache__
+
+# Data
+/data/raw/*.csv
+/data/processed/*.csv
+
+# Models - rastreados pelo DVC
+/models/*.keras
+/models/*.pkl
+/models/*.joblib
+
+# Predictions 
+/predictions/*.csv
+
+# MLflow artifacts
+mlruns/
+
+# Environments
+.env
