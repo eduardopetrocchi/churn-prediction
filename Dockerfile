@@ -5,10 +5,17 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Instalar dependências do sistema
-RUN apt-get update && apt get install -y 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copiar arquivos de dependências
-COPY pyproject.toml ./ 
+# Copiar arquivos de dependências primeiro (para aproveitar cache do Docker)
+COPY pyproject.toml ./
+
+# Instalar o pacote em modo editável e suas dependências
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -e .
 
 # Copia código fonte
 COPY . .    

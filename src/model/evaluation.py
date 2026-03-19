@@ -2,25 +2,27 @@ import json
 import os
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import yaml
 from keras.models import load_model as keras_load_model
 from sklearn.metrics import (
-    accuracy_score,
     classification_report,
     confusion_matrix,
     roc_auc_score,
+    roc_curve,
 )
 
 
 def load_params() -> dict:
     """
-    Carrega o arquivo completo de parâmetros do projeto.
+    Carrega o arquivo completo de parâmetros do projeto (params.yaml).
 
     Returns:
-        dict: Configurações carregadas do 'params.yaml'.
+        dict: Dicionário contendo as configurações globais.
     """
     with open("params.yaml", "r") as f:
         params = yaml.safe_load(f)
@@ -29,7 +31,7 @@ def load_params() -> dict:
 
 def load_model() -> object:
     """
-    Carrega o modelo Keras pré-treinado do diretório de modelos.
+    Carrega o modelo Keras pré-treinado do diretório padrão.
 
     Returns:
         keras.Model: O modelo de rede neural carregado.
@@ -56,12 +58,12 @@ def load_test_data() -> tuple[pd.DataFrame, pd.Series]:
     return X_test, y_test
 
 
-def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
+def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> tuple[dict, np.ndarray, np.ndarray]:
     """
     Calcula as métricas de performance do modelo nos dados de teste.
 
     Gera predições de probabilidade e classe, calculando métricas como 
-    F1-Score, ROC-AUC e Matriz de Confusão.
+    F1-Score, ROC-AUC e os componentes da matriz de confusão.
 
     Args:
         model (keras.Model): Modelo treinado a ser avaliado.
@@ -69,15 +71,13 @@ def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
         y_test (pd.Series): Rótulos reais de teste.
 
     Returns:
-        dict: Dicionário contendo métricas escalares e os componentes da matriz de confusão.
+        tuple: (metrics_dict, y_pred, y_pred_proba)
     """
     print("Avaliando o modelo...")
 
-    # Predições
     y_pred_proba = model.predict(X_test).flatten()
     y_pred = (y_pred_proba > 0.5).astype(int)
 
-    # Métricas
     report = classification_report(y_test, y_pred, output_dict=True)
     cm = confusion_matrix(y_test, y_pred)
 
@@ -95,15 +95,74 @@ def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
         },
     }
 
-    return metrics
+    return metrics, y_pred, y_pred_proba
+
+
+def plot_confusion_matrix(y_test: pd.Series, y_pred: np.ndarray, plots_dir: Path) -> None:
+    """
+    Gera um mapa de calor (heatmap) da matriz de confusão e o salva em disco.
+
+    Args:
+        y_test (pd.Series): Rótulos reais.
+        y_pred (np.ndarray): Classes preditas pelo modelo.
+        plots_dir (Path): Diretório de destino para o arquivo PNG.
+    """
+    cm = confusion_matrix(y_test, y_pred)
+
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=["No Churn", "Churn"],
+        yticklabels=["No Churn", "Churn"],
+    )
+    plt.title("Confusion Matrix")
+    plt.ylabel("True Label")
+    plt.xlabel("Predicted Label")
+
+    plot_path = plots_dir / "confusion_matrix.png"
+    plt.savefig(plot_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"Confusion Matrix salva em: {plot_path}")
+
+
+def plot_roc_curve(y_test: pd.Series, y_pred_proba: np.ndarray, roc_auc: float, plots_dir: Path) -> None:
+    """
+    Gera o gráfico da curva ROC (Receiver Operating Characteristic) e o salva em disco.
+
+    Args:
+        y_test (pd.Series): Rótulos reais.
+        y_pred_proba (np.ndarray): Probabilidades preditas pelo modelo.
+        roc_auc (float): Valor da área sob a curva (AUC).
+        plots_dir (Path): Diretório de destino para o arquivo PNG.
+    """
+    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, color="darkorange", lw=2, label=f"ROC curve (AUC = {roc_auc:.3f})")
+    plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--", label="Random")
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve")
+    plt.legend(loc="lower right")
+    plt.grid(alpha=0.3)
+
+    plot_path = plots_dir / "roc_curve.png"
+    plt.savefig(plot_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"ROC Curve salva em: {plot_path}")
 
 
 def print_results(metrics: dict) -> None:
     """
-    Exibe os resultados da avaliação de forma formatada no terminal.
+    Exibe o resumo das métricas e a matriz de confusão no console.
 
     Args:
-        metrics (dict): Dicionário de métricas retornado por evaluate_model.
+        metrics (dict): Dicionário de métricas calculado em evaluate_model.
     """
     print("\n" + "=" * 60)
     print("RESULTADOS DA AVALIAÇÃO".center(60))
@@ -123,7 +182,7 @@ def print_results(metrics: dict) -> None:
 
 def save_metrics(metrics: dict) -> None:
     """
-    Exporta as métricas calculadas para um arquivo JSON em disco.
+    Exporta o dicionário de métricas para um arquivo JSON.
 
     Args:
         metrics (dict): Dicionário de métricas de avaliação.
@@ -139,16 +198,13 @@ def save_metrics(metrics: dict) -> None:
 
 def log_to_mlflow(metrics: dict) -> None:
     """
-    Registra as métricas de teste e o artefato JSON na última run ativa do MLflow.
-
-    Busca a execução mais recente no experimento 'churn_prediction'.
+    Registra métricas e gráficos na última execução ativa do MLflow.
 
     Args:
         metrics (dict): Dicionário de métricas de avaliação.
     """
     mlflow.set_experiment("churn_prediction")
 
-    # Busca a última run para anexar as métricas de teste a ela
     runs = mlflow.search_runs(order_by=["start_time DESC"], max_results=1)
 
     if not runs.empty:
@@ -164,29 +220,37 @@ def log_to_mlflow(metrics: dict) -> None:
                 }
             )
             mlflow.log_artifact("metrics/evaluation.json")
-            print("Métricas logadas com sucesso no MLFlow.")
+            mlflow.log_artifact("metrics/plots/confusion_matrix.png")
+            mlflow.log_artifact("metrics/plots/roc_curve.png")
+            print("Métricas e gráficos logados com sucesso no MLFlow.")
 
 
 def main() -> None:
     """
-    Orquestra o pipeline de avaliação do modelo.
-    
-    Inclui carregamento de recursos, cálculo de métricas, exibição 
-    em console e persistência em arquivos e trackers (MLflow).
+    Executa o pipeline completo de avaliação: carga de dados, cálculo de 
+    métricas, geração de plots e persistência de logs (DVC e MLflow).
     """
     print("=" * 60)
     print("INICIANDO AVALIAÇÃO DO MODELO".center(60))
     print("=" * 60)
 
-    # 1. Carregar modelo e dados
+    # 1. Criar diretório de plots
+    plots_dir = Path("metrics/plots")
+    plots_dir.mkdir(parents=True, exist_ok=True)
+
+    # 2. Carregar modelo e dados
     model = load_model()
     X_test, y_test = load_test_data()
     print(f"Dados carregados: {X_test.shape[0]} amostras de teste\n")
 
-    # 2. Avaliar
-    metrics = evaluate_model(model, X_test, y_test)
+    # 3. Avaliar
+    metrics, y_pred, y_pred_proba = evaluate_model(model, X_test, y_test)
 
-    # 3. Resultados e Logs
+    # 4. Gerar plots
+    plot_confusion_matrix(y_test, y_pred, plots_dir)
+    plot_roc_curve(y_test, y_pred_proba, metrics["roc_auc"], plots_dir)
+
+    # 5. Resultados e Logs
     print_results(metrics)
     save_metrics(metrics)
     log_to_mlflow(metrics)

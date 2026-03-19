@@ -6,9 +6,12 @@ import mlflow
 import mlflow.keras
 import pandas as pd
 import dagshub
+from dotenv import load_dotenv
 
 from src.model.model_training import build_model
 from tensorflow.keras.callbacks import EarlyStopping
+
+load_dotenv()
 
 
 def load_params() -> dict[str, float | int]:
@@ -56,7 +59,7 @@ def setup_mlflow_experiment() -> dict:
     """
     # Inicializar DagsHub
     dagshub.init(
-        repo_owner=os.getenv("MLFLOW_TRACKING_USERNAME"), repo_name="churn_prediction"
+        repo_owner=os.getenv("MLFLOW_TRACKING_USERNAME"), repo_name="churn-prediction"
     )
 
     # Configurar experimento MLFlow
@@ -227,7 +230,7 @@ def save_training_artifacts(
 def main() -> None:
     """
     Ponto de entrada do pipeline de treinamento.
-    
+
     Orquestra o carregamento de parâmetros e dados, executa o treinamento
     e exibe o sumário final de performance no console.
     """

@@ -1,0 +1,133 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python -m src.data.prepare
+    deps:
+    - path: data/raw/telco.csv
+      hash: md5
+      md5: 0f9de68e012bd3aed5fa7cdc9fc421af
+      size: 977501
+      isexec: true
+    - path: params.yaml
+      hash: md5
+      md5: 2ae3509df594686abcd336afd7a13ff2
+      size: 158
+      isexec: true
+    - path: src/data/prepare.py
+      hash: md5
+      md5: 6b617a45dd08d3fcb4757444b1f8d2e3
+      size: 6736
+      isexec: true
+    params:
+      params.yaml:
+        data.random_state: 42
+        data.test_size: 0.2
+    outs:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: 8aea40d953f8144a270411354b655a6b
+      size: 343052
+      isexec: true
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 6b5d5de3b0349e0a638302f5cd00b577
+      size: 1371106
+      isexec: true
+    - path: models/preprocessor.pkl
+      hash: md5
+      md5: 788a4cd81559c74087313cb32fb6a0c2
+      size: 6576
+      isexec: true
+  train:
+    cmd: python -m src.model.train
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: 8aea40d953f8144a270411354b655a6b
+      size: 343052
+      isexec: true
+    - path: data/processed/train.csv
+      hash: md5
+      md5: 6b5d5de3b0349e0a638302f5cd00b577
+      size: 1371106
+      isexec: true
+    - path: models/preprocessor.pkl
+      hash: md5
+      md5: 788a4cd81559c74087313cb32fb6a0c2
+      size: 6576
+      isexec: true
+    - path: params.yaml
+      hash: md5
+      md5: 2ae3509df594686abcd336afd7a13ff2
+      size: 158
+      isexec: true
+    - path: src/model/model_training.py
+      hash: md5
+      md5: 527012b7927cf965f281de65edaf0c1f
+      size: 1940
+      isexec: true
+    - path: src/model/train.py
+      hash: md5
+      md5: 3586dd95bfcae3f7092dcb3c171cfda3
+      size: 8561
+      isexec: true
+    params:
+      params.yaml:
+        model.batch_size: 64
+        model.dropout: 0.2
+        model.epochs: 50
+        model.hidden_layers:
+        - 64
+        - 32
+        model.learning_rate: 0.001
+        model.patience: 10
+    outs:
+    - path: metrics/training.json
+      hash: md5
+      md5: 755d7824111e0bde53fa3c7a68fdcb4e
+      size: 2359
+      isexec: true
+    - path: models/model.keras
+      hash: md5
+      md5: 716f275a903fa66575c47bb861df00a4
+      size: 90536
+      isexec: true
+  evaluate:
+    cmd: python -m src.model.evaluation
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: 8aea40d953f8144a270411354b655a6b
+      size: 343052
+      isexec: true
+    - path: models/model.keras
+      hash: md5
+      md5: 716f275a903fa66575c47bb861df00a4
+      size: 90536
+      isexec: true
+    - path: models/preprocessor.pkl
+      hash: md5
+      md5: 788a4cd81559c74087313cb32fb6a0c2
+      size: 6576
+      isexec: true
+    - path: src/model/evaluation.py
+      hash: md5
+      md5: 4d16199fc1eee4770e2d6e70a42804d9
+      size: 8198
+      isexec: true
+    outs:
+    - path: metrics/evaluation.json
+      hash: md5
+      md5: e1ad1e29833286ba84c311f5125e61f7
+      size: 309
+      isexec: true
+    - path: metrics/plots/confusion_matrix.png
+      hash: md5
+      md5: b4d1ee3b73d66518b769f1e1f7e6033d
+      size: 36977
+      isexec: true
+    - path: metrics/plots/roc_curve.png
+      hash: md5
+      md5: d7c624d1a317dcba0cb5933530d34ff3
+      size: 60157
+      isexec: true
