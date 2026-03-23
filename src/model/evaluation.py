@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import yaml
-from keras.models import load_model as keras_load_model
+from tensorflow.keras.models import load_model as keras_load_model
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
@@ -34,7 +34,7 @@ def load_model() -> object:
     Carrega o modelo Keras pré-treinado do diretório padrão.
 
     Returns:
-        keras.Model: O modelo de rede neural carregado.
+        O modelo de rede neural carregado.
     """
     model_path = "models/model.keras"
     print(f"Carregando modelo de: {model_path}")
@@ -58,11 +58,13 @@ def load_test_data() -> tuple[pd.DataFrame, pd.Series]:
     return X_test, y_test
 
 
-def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> tuple[dict, np.ndarray, np.ndarray]:
+def evaluate_model(
+    model, X_test: pd.DataFrame, y_test: pd.Series
+) -> tuple[dict, np.ndarray, np.ndarray]:
     """
     Calcula as métricas de performance do modelo nos dados de teste.
 
-    Gera predições de probabilidade e classe, calculando métricas como 
+    Gera predições de probabilidade e classe, calculando métricas como
     F1-Score, ROC-AUC e os componentes da matriz de confusão.
 
     Args:
@@ -98,7 +100,9 @@ def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> tuple[dict
     return metrics, y_pred, y_pred_proba
 
 
-def plot_confusion_matrix(y_test: pd.Series, y_pred: np.ndarray, plots_dir: Path) -> None:
+def plot_confusion_matrix(
+    y_test: pd.Series, y_pred: np.ndarray, plots_dir: Path
+) -> None:
     """
     Gera um mapa de calor (heatmap) da matriz de confusão e o salva em disco.
 
@@ -128,7 +132,9 @@ def plot_confusion_matrix(y_test: pd.Series, y_pred: np.ndarray, plots_dir: Path
     print(f"Confusion Matrix salva em: {plot_path}")
 
 
-def plot_roc_curve(y_test: pd.Series, y_pred_proba: np.ndarray, roc_auc: float, plots_dir: Path) -> None:
+def plot_roc_curve(
+    y_test: pd.Series, y_pred_proba: np.ndarray, roc_auc: float, plots_dir: Path
+) -> None:
     """
     Gera o gráfico da curva ROC (Receiver Operating Characteristic) e o salva em disco.
 
@@ -141,7 +147,9 @@ def plot_roc_curve(y_test: pd.Series, y_pred_proba: np.ndarray, roc_auc: float, 
     fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
 
     plt.figure(figsize=(8, 6))
-    plt.plot(fpr, tpr, color="darkorange", lw=2, label=f"ROC curve (AUC = {roc_auc:.3f})")
+    plt.plot(
+        fpr, tpr, color="darkorange", lw=2, label=f"ROC curve (AUC = {roc_auc:.3f})"
+    )
     plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--", label="Random")
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
@@ -227,7 +235,7 @@ def log_to_mlflow(metrics: dict) -> None:
 
 def main() -> None:
     """
-    Executa o pipeline completo de avaliação: carga de dados, cálculo de 
+    Executa o pipeline completo de avaliação: carga de dados, cálculo de
     métricas, geração de plots e persistência de logs (DVC e MLflow).
     """
     print("=" * 60)
